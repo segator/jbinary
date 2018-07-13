@@ -9,14 +9,12 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
+	"runtime"
 )
 
-func Black(data string) {
-	ExecuteJavaApplication(data)
-}
 
-//asdad
-func ExecuteJavaApplication(data string) {
+
+func ExecuteJavaApplication(arguments []string,data string) {
 	//Create empty folder
 	tempWorkFolder, _ := ioutil.TempDir("", "jbinary")
 	zipReader, _ := zip.NewReader(strings.NewReader(data), int64(len(data)))
@@ -34,21 +32,26 @@ func ExecuteJavaApplication(data string) {
 			ioutil.WriteFile(extractedFullPath, unzipped, 0755)
 		}
 	}
-	var javaBin = path.Join(tempWorkFolder, "java/bin/java.exe")
+	var extension=""
+	if runtime.GOOS == "windows" {
+		extension=".exe"
+	}
+	var javaBin = path.Join(tempWorkFolder, "java/bin/java"+extension)
 	var jarFile = path.Join(tempWorkFolder, "application.jar")
-	cmd := exec.Command(javaBin, "-jar", jarFile)
-
+	commandParameters:=append([]string{"-jar", jarFile},arguments...)
+	cmd := exec.Command(javaBin,commandParameters...)
+	cmd.Dir,_=os.Getwd()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
-
+	var exitCode = 0
 	if err := cmd.Wait(); err != nil {
 		exitError := err.(*exec.ExitError)
 		ws := exitError.Sys().(syscall.WaitStatus)
-		os.Exit(ws.ExitStatus())
+		exitCode = ws.ExitStatus()
 	}
-
-	os.Exit(0)
+	os.RemoveAll(tempWorkFolder)
+	os.Exit(exitCode)
 }
 
 func unzip(zf *zip.File) ([]byte, error) {
