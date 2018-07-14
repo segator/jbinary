@@ -82,7 +82,7 @@ func main() {
 	goget.Env=os.Environ()
 	goget.Start()
 	goget.Wait()
-	fmt.Printf("Building Jre embeded application OS:%s  ARCH:%s  FILENAME:%s\n",*flagPlatform,*flagArchitecture,namePackage+"."+extension)
+	fmt.Printf("Building Jre embeded application OS:%s  ARCH:%s  FILENAME:%s\n",*flagPlatform,*flagArchitecture,filepath.Join(destDir,namePackage+"."+extension))
 	cmd := exec.Command("go","build","-o",namePackage+"."+extension)
 	cmd.Env=append(os.Environ(),"GOOS="+*flagPlatform,"GOARCH="+*flagArchitecture)
 	cmd.Dir=destDir
@@ -339,7 +339,7 @@ func ExtractTarGz(srcTarGzPath string,destination string) {
 				log.Fatalf("ExtractTarGz: Copy() failed: %s", err.Error())
 			}
 		case tar.TypeLink,tar.TypeSymlink,tar.TypeChar,tar.TypeBlock,tar.TypeFifo:
-			log.Printf("Ignoring tar object:%s",string(header.Typeflag))
+			log.Printf("Ignoring tar object:%s file:%s",string(header.Typeflag),header.Name)
 		default:
 			log.Fatalf(
 				"ExtractTarGz: uknown type: %s in %s",
