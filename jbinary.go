@@ -14,7 +14,6 @@ import (
 	"time"
 	"os/exec"
 	"syscall"
-	"runtime"
 	"net/http"
 	"archive/tar"
 	"compress/gzip"
@@ -264,7 +263,7 @@ func downloadJRE(workDir string){
 	if *flagArchitecture == "amd64" {
 		arch="64"
 	}
-	if runtime.GOOS == "windows" {
+	if *flagPlatform == "windows" {
 		ossystem="win"
 	}else{
 		arch=""
