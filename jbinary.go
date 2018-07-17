@@ -33,10 +33,13 @@ var (
 	flagPlatform   = flag.String("platform", "windows", "Operating system(linux|windows)")
 	flagArchitecture   = flag.String("architecture", "amd64", "Building Architecture (amd64|386)")
 	flagJreVersio = flag.String("jre-version", "1.8.0_131", "The destination path of the generated package.")
+	flagJavaType = flag.String("java-type", "jre", "Java type jre|jdk")
 	flagNoMtime    = flag.Bool("ignore-modtime", false, "Ignore modification times on files.")
 	flagNoCompress = flag.Bool("no-compress", false, "Do not use compression to shrink the files.")
 	flagPkg        = flag.String("output-name", "application", "Name of the generated package")
-	jreDownloadURL = "https://artifacts.alfresco.com/nexus/content/repositories/public/com/oracle/java/jre/%s/jre-%s-%s%s.tgz"
+
+	flagDefaultDownloadURL="https://artifacts.alfresco.com/nexus/content/repositories/public/com/oracle/java/{javaType}/{javaVersion}/{javaType}-{javaVersion}-{platform}{architecture}.tgz"
+	jreDownloadURL = flag.String("java-download-link",flagDefaultDownloadURL,"Link where to download java distribution format:"+flagDefaultDownloadURL)
 	//https://artifacts.alfresco.com/nexus/content/repositories/public/com/oracle/java/jre/1.8.0_131/jre-1.8.0_131-win64.tgz
 )
 
@@ -257,7 +260,6 @@ func exitWithError(err error) {
 
 func downloadJRE(workDir string){
 	var jreTarPath = filepath.Join(workDir,"jre.tar.gz")
-	var jreVersion = *flagJreVersio
 	var ossystem="linux"
 	var arch="32"
 	if *flagArchitecture == "amd64" {
@@ -268,9 +270,11 @@ func downloadJRE(workDir string){
 	}else{
 		arch=""
 	}
-	fmt.Printf("Downloading JRE version:%s  architecture:%s\n",ossystem,arch)
-	var downloadLink = fmt.Sprintf(jreDownloadURL, jreVersion,jreVersion,ossystem,arch)
-	DownloadFile(jreTarPath,downloadLink)
+	var jreURL =strings.Replace(*jreDownloadURL,"{javaType}",*flagJavaType,-1)
+	jreURL=strings.Replace(jreURL,"{javaVersion}",*flagJreVersio,-1)
+	jreURL=strings.Replace(jreURL,"{platform}",ossystem,-1)
+	jreURL=strings.Replace(jreURL,"{architecture}",arch,-1)
+	DownloadFile(jreTarPath,jreURL)
 	fmt.Printf("Extracting JRE version:%s  architecture:%s\n",ossystem,arch)
 	ExtractTarGz(jreTarPath,workDir)
 	os.Remove(jreTarPath)
@@ -279,7 +283,7 @@ func downloadJRE(workDir string){
 }
 
 func DownloadFile(filepath string, url string) error {
-
+	fmt.Printf("Downloading %s",url)
 	// Create the file
 	out, err := os.Create(filepath)
 	if err != nil {
