@@ -37,8 +37,8 @@ var (
 	flagNoMtime    = flag.Bool("ignore-modtime", false, "Ignore modification times on files.")
 	flagNoCompress = flag.Bool("no-compress", false, "Do not use compression to shrink the files.")
 	flagPkg        = flag.String("output-name", "application", "Name of the generated package")
-
-	flagDefaultDownloadURL="https://artifacts.alfresco.com/nexus/content/repositories/public/com/oracle/java/{javaType}/{javaVersion}/{javaType}-{javaVersion}-{platform}{architecture}.tgz"
+	flagServerURL  = flag.String("java-server-url","https://artifacts.alfresco.com/nexus/content/repositories/public","Server base URL to look for java download")
+	flagDefaultDownloadURL="{serverURL}/com/oracle/java/{javaType}/{javaVersion}/{javaType}-{javaVersion}-{platform}{architecture}.tgz"
 	jreDownloadURL = flag.String("java-download-link",flagDefaultDownloadURL,"Link where to download java distribution format:"+flagDefaultDownloadURL)
 	//https://artifacts.alfresco.com/nexus/content/repositories/public/com/oracle/java/jre/1.8.0_131/jre-1.8.0_131-win64.tgz
 )
@@ -272,6 +272,7 @@ func downloadJRE(workDir string){
 	}
 	var jreURL =strings.Replace(*jreDownloadURL,"{javaType}",*flagJavaType,-1)
 	jreURL=strings.Replace(jreURL,"{javaVersion}",*flagJreVersio,-1)
+	jreURL=strings.Replace(jreURL,"{serverURL}",*flagServerURL,-1)
 	jreURL=strings.Replace(jreURL,"{platform}",ossystem,-1)
 	jreURL=strings.Replace(jreURL,"{architecture}",arch,-1)
 	DownloadFile(jreTarPath,jreURL)
