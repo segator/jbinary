@@ -19,6 +19,7 @@ import (
 	"compress/gzip"
 	"log"
 	"bufio"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -62,18 +63,18 @@ func main() {
 	fmt.Println("Generating golang source class")
 	file, err := generateSource(tempWorkFolder)
 	if err != nil {
-		exitWithError(err)
+		exitWithError(err,-1)
 	}
 
 	destDir := *flagDest
 	err = os.MkdirAll(destDir, 0755)
 	if err != nil {
-		exitWithError(err)
+		exitWithError(err,-2)
 	}
 	sourceFile :=path.Join(destDir, nameSourceFile)
 	err = rename(file.Name(),sourceFile)
 	if err != nil {
-		exitWithError(err)
+		exitWithError(err,-3)
 	}
 	extension := "bin"
 	if strings.Compare(*flagPlatform,"windows")==0 {
@@ -253,9 +254,10 @@ func FprintZipData(dest *bytes.Buffer, zipData []byte) {
 }
 
 // Prints out the error message and exists with a non-success signal.
-func exitWithError(err error) {
+func exitWithError(err error,exitCode int) {
+
 	fmt.Println(err)
-	os.Exit(1)
+	os.Exit(exitCode)
 }
 
 func downloadJRE(workDir string){
@@ -284,7 +286,7 @@ func downloadJRE(workDir string){
 }
 
 func DownloadFile(filepath string, url string) error {
-	fmt.Printf("Downloading %s",url)
+	fmt.Printf("Downloading %s\n",url)
 	// Create the file
 	out, err := os.Create(filepath)
 	if err != nil {
@@ -294,6 +296,9 @@ func DownloadFile(filepath string, url string) error {
 
 	// Get the data
 	resp, err := http.Get(url)
+	if resp.StatusCode == 404 {
+		exitWithError(errors.New(strings.Replace("URL Repository JRE not found: {url}","{url}",url,-1)),-4)
+	}
 	if err != nil {
 		return err
 	}
@@ -353,6 +358,7 @@ func ExtractTarGz(srcTarGzPath string,destination string) {
 	}
 	file.Close()
 }
+
 func Copy(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
