@@ -63,18 +63,18 @@ func main() {
 	fmt.Println("Generating golang source class")
 	file, err := generateSource(tempWorkFolder)
 	if err != nil {
-		exitWithError(err,-1)
+		exitWithError(err,1)
 	}
 
 	destDir := *flagDest
 	err = os.MkdirAll(destDir, 0755)
 	if err != nil {
-		exitWithError(err,-2)
+		exitWithError(err,2)
 	}
 	sourceFile :=path.Join(destDir, nameSourceFile)
 	err = rename(file.Name(),sourceFile)
 	if err != nil {
-		exitWithError(err,-3)
+		exitWithError(err,3)
 	}
 	extension := "bin"
 	if strings.Compare(*flagPlatform,"windows")==0 {
@@ -297,7 +297,7 @@ func DownloadFile(filepath string, url string) error {
 	// Get the data
 	resp, err := http.Get(url)
 	if resp.StatusCode == 404 || resp.StatusCode == 409 {
-		exitWithError(errors.New(strings.Replace("URL Repository JRE not found: {url}","{url}",url,-1)),-4)
+		exitWithError(errors.New(strings.Replace("URL Repository JRE not found: {url}","{url}",url,-1)),4)
 	}
 	if err != nil {
 		return err
