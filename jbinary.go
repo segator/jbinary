@@ -1,29 +1,32 @@
 package main
 
 import (
+	"archive/tar"
 	"archive/zip"
+	"bufio"
 	"bytes"
+	"compress/gzip"
 	"flag"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
-	"os/exec"
 	"syscall"
-	"net/http"
-	"archive/tar"
-	"compress/gzip"
-	"log"
-	"bufio"
-	"github.com/pkg/errors"
+	"text/template"
+	"time"
 )
 
 const (
 	nameSourceFile = "data.go"
+	nameVersionInfoFile = "versioninfo.json"
+	nameManifestFile = "manifest.xml"
 )
 
 var namePackage string
@@ -37,11 +40,29 @@ var (
 	flagJavaType = flag.String("java-type", "jre", "Java type jre|jdk")
 	flagNoMtime    = flag.Bool("ignore-modtime", false, "Ignore modification times on files.")
 	flagNoCompress = flag.Bool("no-compress", false, "Do not use compression to shrink the files.")
+	flagJVMArguments = flag.String("jvm-arguments", "", "JVM Arguments")
+	flagAppArguments = flag.String("app-arguments", "", "App Arguments")
 	flagPkg        = flag.String("output-name", "application", "Name of the generated package")
+	flagDebugPort = flag.Int64("jre-debug-port", 21500, "Debug port to listen if the generated binary is executed with cli -debug")
 	flagServerURL  = flag.String("java-server-url","https://artifacts.alfresco.com/nexus/content/repositories/public","Server base URL to look for java download")
 	flagDefaultDownloadURL="{serverURL}/com/oracle/java/{javaType}/{javaVersion}/{javaType}-{javaVersion}-{platform}{architecture}.tgz"
 	jreDownloadURL = flag.String("java-download-link",flagDefaultDownloadURL,"Link where to download java distribution format:"+flagDefaultDownloadURL)
 	//https://artifacts.alfresco.com/nexus/content/repositories/public/com/oracle/java/jre/1.8.0_131/jre-1.8.0_131-win64.tgz
+
+	flagWinDescription  = flag.String("win-description", "no description", "Windows Application description")
+	flagWinCopyright  = flag.String("win-copyright", "no copyright", "Windows Application copyright")
+	flagWinCompany  = flag.String("win-company", "no company", "Windows Application company name")
+	flagWinIconPath  = flag.String("win-icon-path", "", "icon path")
+	flagWinProductName  = flag.String("win-product-name", "product name", "Windows Application product name")
+	flagWinProductVersion  = flag.String("win-product-version", "1.0.0.0", "Windows Application product version")
+	flagWinMajorVersion  = flag.String("win-version-major", "1", "Windows Application Major version")
+	flagWinMinorVersion = flag.String("win-version-minor", "0", "Windows Application Minor version")
+	flagWinPatchVersion = flag.String("win-version-patch", "0", "Windows Application Patch version")
+	flagWinExecutionLevel = flag.String("win-invoker", "asInvoker", "Windows Invoker type  asInvoker|requireAdministrator default(asInvoker)")
+	flagWinExecutionBehaviour = flag.String("win-execution-behaviour", "console", "Default behaviour to run app, in gui mode no console is shown but you can't execute by console or capture stdout, (console|gui) default(console)")
+	flagWinExecutionBehaviourConsoleArgs = flag.String("win-execution-enable-console-behaviour-args", "-console;-terminal", "Arguments that will force console mode in case of default behaviour gui, default (-console;-terminal)")
+
+
 )
 
 // mtimeDate holds the arbitrary mtime that we assign to files when
@@ -61,7 +82,7 @@ func main() {
 	Copy(javaAppPathAbs,filepath.Join(tempWorkFolder,"application.jar"))
 
 	fmt.Println("Generating golang source class")
-	file, err := generateSource(tempWorkFolder)
+	file, err := generateSource(*flagJVMArguments,*flagAppArguments,tempWorkFolder)
 	if err != nil {
 		exitWithError(err,1)
 	}
@@ -76,16 +97,36 @@ func main() {
 	if err != nil {
 		exitWithError(err,3)
 	}
+	sourceVersionInfoFilePath :=path.Join(destDir, nameVersionInfoFile)
+	manifestInfoFilePath :=path.Join(destDir, nameManifestFile)
+	goGetDependencies([]string{"github.com/segator/jbinary"})
 	extension := "bin"
 	if strings.Compare(*flagPlatform,"windows")==0 {
+		fmt.Println("Go Generate version info")
+		_,err =generateVersionInfoFile(sourceVersionInfoFilePath)
+		if err != nil {
+			exitWithError(err,5)
+		}
+		fmt.Println("Go Generate windows manifest file")
+		_,err =generateManifestFile(manifestInfoFilePath)
+		if err != nil {
+			exitWithError(err,5)
+		}
+		goGetDependencies([]string{"github.com/josephspurrier/goversioninfo/cmd/goversioninfo"})
+		goget:=exec.Command("goversioninfo","-manifest",manifestInfoFilePath,"-description",*flagWinDescription,"-copyright",*flagWinCopyright,"-company",*flagWinCompany,"-icon",*flagWinIconPath,
+			"-product-name",*flagWinProductName,"-product-version",*flagWinProductVersion,"-ver-major",*flagWinMajorVersion,"-ver-minor",*flagWinMinorVersion,"-ver-patch",*flagWinPatchVersion,
+			"-trademark",*flagWinCompany)
+		goget.Env=os.Environ()
+		goget.Dir=destDir
+		goget.Stdout = os.Stdout
+		goget.Stderr = os.Stderr
+		goget.Start()
+		goget.Wait()
 		extension="exe"
 	}
-	fmt.Println("Downloading go dependencies")
-	goget:=exec.Command("go","get","github.com/segator/jbinary/")
-	goget.Env=os.Environ()
-	goget.Start()
-	goget.Wait()
+
 	fmt.Printf("Building Jre embeded application OS:%s  ARCH:%s  FILENAME:%s\n",*flagPlatform,*flagArchitecture,filepath.Join(destDir,namePackage+"."+extension))
+	//"-ldflags","-H=windowsgui",
 	cmd := exec.Command("go","build","-o",namePackage+"."+extension)
 	cmd.Env=append(os.Environ(),"GOOS="+*flagPlatform,"GOARCH="+*flagArchitecture)
 	cmd.Dir=destDir
@@ -100,9 +141,56 @@ func main() {
 	}
 	fmt.Printf("deleting Working Folder:%s\n",tempWorkFolder)
 	os.Remove(sourceFile)
+	os.Remove(path.Join(destDir, "resource.syso"))
+	os.Remove(sourceVersionInfoFilePath)
+	os.Remove(manifestInfoFilePath)
 	os.RemoveAll(tempWorkFolder)
 	os.Exit(exitCode)
 }
+func generateManifestFile(srcPath string) (file *os.File, err error) {
+	f, err := os.Create(srcPath)
+	if err != nil {
+		log.Fatal("Cannot create file", err)
+	}
+	defer f.Close()
+
+	fmt.Fprintf(f, `<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+  <assemblyIdentity
+    type="win32"
+    name="%s"
+    version="%s"    
+    processorArchitecture="IA64"/>
+ <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+   <security>
+     <requestedPrivileges>
+       <requestedExecutionLevel
+         level="%s"
+         uiAccess="false"/>
+       </requestedPrivileges>
+   </security>
+ </trustInfo>
+</assembly>`,*flagWinProductName,*flagWinProductVersion,*flagWinExecutionLevel)
+	return f,err
+}
+
+func goGetDependencies(dependencies []string) {
+	for _, dependency := range dependencies {
+		goget:=exec.Command("go","get",dependency)
+		goget.Env=os.Environ()
+		goget.Stdout = os.Stdout
+		goget.Stderr = os.Stderr
+		goget.Start()
+		goget.Wait()
+	}
+}
+
+/*func test(zip string) {
+	jvmArguments:=[]string{}
+	staticJavaAppArguments:=[]string{}
+	javaAppArguments :=staticJavaAppArguments
+	debugPort := 21500
+	loader.ExecuteJavaApplication(jvmArguments,javaAppArguments,debugPort,zip)
+}*/
 
 // rename tries to os.Rename, but fall backs to copying from src
 // to dest and unlink the source if os.Rename fails.
@@ -141,12 +229,33 @@ func rename(src, dest string) error {
 	}
 	return err
 }
+func generateVersionInfoFile(srcPath string) (file *os.File, err error) {
+	f, err := os.Create(srcPath)
+	if err != nil {
+		log.Fatal("Cannot create file", err)
+	}
+	defer f.Close()
 
-// Walks on the source path and generates source code
-// that contains source directory's contents as zip contents.
-// Generates source registers generated zip contents data to
-// be read by the statik/fs HTTP file system.
-func generateSource(srcPath string) (file *os.File, err error) {
+	fmt.Fprintf(f, `{
+  "FixedFileInfo": {
+    "FileFlagsMask": "3f",
+    "FileFlags ": "00",
+    "FileOS": "040004",
+    "FileType": "01",
+    "FileSubType": "00"
+  },
+  "VarFileInfo": {
+    "Translation": {
+      "LangID": "0409",
+      "CharsetID": "04B0"
+    }
+  }
+}`)
+	return f,err
+}
+
+
+func generateSource(jvmArguments string,appArguments string,srcPath string) (file *os.File, err error) {
 	var (
 		buffer    bytes.Buffer
 		zipWriter io.Writer
@@ -207,7 +316,11 @@ func generateSource(srcPath string) (file *os.File, err error) {
 		return
 	}
 
-	// then embed it as a quoted string
+	jvmArgumentsString := generateCodeStringArray(jvmArguments)
+	javaArgumentsString := generateCodeStringArray(appArguments)
+	forceConsoleBehaviourArgsString := generateCodeStringArray(*flagWinExecutionBehaviourConsoleArgs)
+
+	//test(string(buffer.Bytes()))
 	var qb bytes.Buffer
 	fmt.Fprintf(&qb, `// Code generated by jBinary. DO NOT EDIT.
 package main
@@ -218,16 +331,38 @@ import (
 )
 
 func main() {
-	data := "`)
+    jvmArguments:=[]string{%s}
+    staticJavaAppArguments:=[]string{%s}
+    defaultExecutionBehaviour:="%s"
+	forceConsoleBehaviourArgs:=[]string{%s}
+	javaAppArguments :=append(staticJavaAppArguments,os.Args[1:]...)
+    debugPort := %d
+	data := "`,jvmArgumentsString,javaArgumentsString,*flagWinExecutionBehaviour,forceConsoleBehaviourArgsString,*flagDebugPort)
 	FprintZipData(&qb, buffer.Bytes())
 	fmt.Fprint(&qb, `"
-	loader.ExecuteJavaApplication(os.Args[1:],data)
+	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,data)
 }
 `)
 	if err = ioutil.WriteFile(f.Name(), qb.Bytes(), 0644); err != nil {
 		return
 	}
 	return f, nil
+}
+
+
+func generateCodeStringArray(parameters string) string {
+	parameters = strings.TrimSpace(parameters)
+	if parameters != "" {
+		parametersSlice := strings.Split(parameters,";")
+		var templStr = `{{range $i, $e := $}}{{if $i}},{{end}}"{{$e}}"{{end}}`
+		var tpl bytes.Buffer
+		t := template.Must(template.New("splitParameters").Parse(templStr))
+		t.Execute(&tpl, parametersSlice)
+		return tpl.String()
+	}else {
+		return ""
+	}
+
 }
 
 // FprintZipData converts zip binary contents to a string literal.

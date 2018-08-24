@@ -9,8 +9,10 @@ before_install:
   - go get github.com/mitchellh/gox
   - go get github.com/tcnksm/ghr
   - go get github.com/pkg/errors
+script:
+- go build
 install:
-  - gox -osarch="linux/amd64" -osarch="windows/amd64" -output "dist/{{.OS}}_{{.Arch}}_{{.Dir}}_$TRAVIS_BRANCH"
+- gox -osarch="linux/amd64" -osarch="windows/amd64" -output "dist/{{.OS}}_{{.Arch}}_{{.Dir}}_$TRAVIS_BRANCH"
 deploy:
     provider: releases
     file_glob: true

@@ -2,19 +2,47 @@ package loader
 
 import (
 	"archive/zip"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
-	"runtime"
 )
 
+func Contains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
+}
+
+func ExecuteJavaApplication(defaultExecutionBehaviour string,forceConsoleBehaviourArgs []string,jvmArguments []string,arguments []string,debugPort int,data string) {
+	javaExecutableName:="java"
+	if runtime.GOOS == "windows" {
+		if defaultExecutionBehaviour == "gui" {
+			forcedToConsole:=false
+			for _, consoleForceArg := range forceConsoleBehaviourArgs {
+				if Contains(arguments,consoleForceArg) {
+					forcedToConsole=true
+				}
+			}
+			if !forcedToConsole {
+				Console(false)
+				defer Console(true)
+				javaExecutableName="javaw"
+			}
+
+		}
+		javaExecutableName=javaExecutableName + ".exe"
+	}
 
 
-func ExecuteJavaApplication(arguments []string,data string) {
 	//Create empty folder
 	tempWorkFolder, _ := ioutil.TempDir("", "jbinary")
 	zipReader, _ := zip.NewReader(strings.NewReader(data), int64(len(data)))
@@ -32,15 +60,17 @@ func ExecuteJavaApplication(arguments []string,data string) {
 			ioutil.WriteFile(extractedFullPath, unzipped, 0755)
 		}
 	}
-	var extension=""
-	if runtime.GOOS == "windows" {
-		extension=".exe"
+	dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
+
+	if Contains(arguments,"-debug") {
+		jvmArguments = append(jvmArguments,fmt.Sprintf("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=%d",debugPort))
 	}
-	var javaBin = path.Join(tempWorkFolder, "java/bin/java"+extension)
+	var javaBin = path.Join(tempWorkFolder, fmt.Sprintf("java/bin/%s",javaExecutableName))
 	var jarFile = path.Join(tempWorkFolder, "application.jar")
-	commandParameters:=append([]string{"-jar", jarFile},arguments...)
+	applicationArguments:=append([]string{"-jar", jarFile},arguments...)
+	commandParameters:=append(jvmArguments,applicationArguments...)
 	cmd := exec.Command(javaBin,commandParameters...)
-	cmd.Dir,_=os.Getwd()
+	cmd.Dir=dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
@@ -61,4 +91,20 @@ func unzip(zf *zip.File) ([]byte, error) {
 	}
 	defer rc.Close()
 	return ioutil.ReadAll(rc)
+}
+
+func Console(show bool) {
+	var getWin = syscall.NewLazyDLL("kernel32.dll").NewProc("GetConsoleWindow")
+	var showWin = syscall.NewLazyDLL("user32.dll").NewProc("ShowWindow")
+	hwnd, _, _ := getWin.Call()
+	if hwnd == 0 {
+		return
+	}
+	if show {
+		var SW_RESTORE uintptr = 9
+		showWin.Call(hwnd, SW_RESTORE)
+	} else {
+		var SW_HIDE uintptr = 0
+		showWin.Call(hwnd, SW_HIDE)
+	}
 }
