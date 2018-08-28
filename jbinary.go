@@ -58,6 +58,7 @@ var (
 	flagWinMajorVersion  = flag.String("win-version-major", "1", "Windows Application Major version")
 	flagWinMinorVersion = flag.String("win-version-minor", "0", "Windows Application Minor version")
 	flagWinPatchVersion = flag.String("win-version-patch", "0", "Windows Application Patch version")
+	flagWinBuildVersion = flag.String("win-version-build", "0", "Windows Application Build version")
 	flagWinExecutionLevel = flag.String("win-invoker", "asInvoker", "Windows Invoker type  asInvoker|requireAdministrator default(asInvoker)")
 	flagWinExecutionBehaviour = flag.String("win-execution-behaviour", "console", "Default behaviour to run app, in gui mode no console is shown but you can't execute by console or capture stdout, (console|gui) default(console)")
 	flagWinExecutionBehaviourConsoleArgs = flag.String("win-execution-enable-console-behaviour-args", "-console;-terminal", "Arguments that will force console mode in case of default behaviour gui, default (-console;-terminal)")
@@ -155,12 +156,11 @@ func generateManifestFile(srcPath string) (file *os.File, err error) {
 		log.Fatal("Cannot create file", err)
 	}
 	defer f.Close()
-
 	fmt.Fprintf(f, `<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <assemblyIdentity
     type="win32"
     name="%s"
-    version="%s"    
+    version="%s.%s.%s.%s"    
     processorArchitecture="IA64"/>
  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
    <security>
@@ -171,7 +171,7 @@ func generateManifestFile(srcPath string) (file *os.File, err error) {
        </requestedPrivileges>
    </security>
  </trustInfo>
-</assembly>`,*flagWinProductName,*flagWinProductVersion,*flagWinExecutionLevel)
+</assembly>`,*flagWinProductName,*flagWinMajorVersion,*flagWinMinorVersion,*flagWinPatchVersion,*flagWinBuildVersion,*flagWinExecutionLevel)
 	return f,err
 }
 
