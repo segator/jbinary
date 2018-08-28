@@ -22,7 +22,7 @@ func Contains(a []string, x string) bool {
 	return false
 }
 
-func ExecuteJavaApplication(defaultExecutionBehaviour string,forceConsoleBehaviourArgs []string,jvmArguments []string,arguments []string,debugPort int,data string) {
+func ExecuteJavaApplication(defaultExecutionBehaviour string,forceConsoleBehaviourArgs []string,jvmArguments []string,arguments []string,debugPort int,data *string) {
 	javaExecutableName:="java"
 	if runtime.GOOS == "windows" {
 		if defaultExecutionBehaviour == "gui" {
@@ -45,21 +45,25 @@ func ExecuteJavaApplication(defaultExecutionBehaviour string,forceConsoleBehavio
 
 	//Create empty folder
 	tempWorkFolder, _ := ioutil.TempDir("", "jbinary")
-	zipReader, _ := zip.NewReader(strings.NewReader(data), int64(len(data)))
+	reader := strings.NewReader(*data)
+	zipReader, _ := zip.NewReader(reader, int64(reader.Len()))
 
 	for _, zipFile := range zipReader.File {
 		unzipped, _ := unzip(zipFile)
-
 		var extractedFullPath = path.Join(tempWorkFolder, zipFile.Name)
 		var extensionFile = filepath.Ext(extractedFullPath)
-		if strings.Compare(extensionFile, "zip") == 0 {
-
-		} else {
+		if strings.Compare(extensionFile, "zip") != 0 {
 			var parentFolder = filepath.Dir(extractedFullPath)
 			os.MkdirAll(parentFolder, 0755)
 			ioutil.WriteFile(extractedFullPath, unzipped, 0755)
 		}
+		unzipped=nil
 	}
+	reader=nil
+	zipReader = nil
+	*data=""
+	data=nil
+	runtime.GC()
 	dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
 
 	if Contains(arguments,"-debug") {

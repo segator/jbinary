@@ -189,7 +189,9 @@ func goGetDependencies(dependencies []string) {
 	staticJavaAppArguments:=[]string{}
 	javaAppArguments :=staticJavaAppArguments
 	debugPort := 21500
-	loader.ExecuteJavaApplication(jvmArguments,javaAppArguments,debugPort,zip)
+	defaultExecutionBehaviour:="gui"
+	forceConsoleBehaviourArgs:=[]string{"-console"}
+	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,&zip)
 }*/
 
 // rename tries to os.Rename, but fall backs to copying from src
@@ -340,7 +342,7 @@ func main() {
 	data := "`,jvmArgumentsString,javaArgumentsString,*flagWinExecutionBehaviour,forceConsoleBehaviourArgsString,*flagDebugPort)
 	FprintZipData(&qb, buffer.Bytes())
 	fmt.Fprint(&qb, `"
-	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,data)
+	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,&data)
 }
 `)
 	if err = ioutil.WriteFile(f.Name(), qb.Bytes(), 0644); err != nil {
