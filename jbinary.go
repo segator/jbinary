@@ -183,15 +183,30 @@ func goGetDependencies(dependencies []string) {
 		goget.Wait()
 	}
 }
-
-/*func test(zip string) {
+/*
+func test(zip string) {
 	jvmArguments:=[]string{}
 	staticJavaAppArguments:=[]string{}
 	javaAppArguments :=staticJavaAppArguments
 	debugPort := 21500
 	defaultExecutionBehaviour:="gui"
 	forceConsoleBehaviourArgs:=[]string{"-console"}
-	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,&zip)
+	var function=func(show bool)  {
+		var getWin = syscall.NewLazyDLL("kernel32.dll").NewProc("GetConsoleWindow")
+		var showWin = syscall.NewLazyDLL("user32.dll").NewProc("ShowWindow")
+		hwnd, _, _ := getWin.Call()
+		if hwnd == 0 {
+			return
+		}
+		if show {
+			var SW_RESTORE uintptr = 9
+			showWin.Call(hwnd, SW_RESTORE)
+		} else {
+			var SW_HIDE uintptr = 0
+			showWin.Call(hwnd, SW_HIDE)
+		}
+	}
+	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,&zip,function)
 }*/
 
 // rename tries to os.Rename, but fall backs to copying from src
@@ -321,6 +336,25 @@ func generateSource(jvmArguments string,appArguments string,srcPath string) (fil
 	jvmArgumentsString := generateCodeStringArray(jvmArguments)
 	javaArgumentsString := generateCodeStringArray(appArguments)
 	forceConsoleBehaviourArgsString := generateCodeStringArray(*flagWinExecutionBehaviourConsoleArgs)
+	windowsFunction :=""
+	if(*flagPlatform == "windows") {
+		windowsFunction =`	
+		var getWin = syscall.NewLazyDLL("kernel32.dll").NewProc("GetConsoleWindow")
+		var showWin = syscall.NewLazyDLL("user32.dll").NewProc("ShowWindow")
+		hwnd, _, _ := getWin.Call()
+		if hwnd == 0 {
+			return
+		}
+		if show {
+			var SW_RESTORE uintptr = 9
+			showWin.Call(hwnd, SW_RESTORE)
+		} else {
+			var SW_HIDE uintptr = 0
+			showWin.Call(hwnd, SW_HIDE)
+		}
+	`
+
+	}
 
 	//test(string(buffer.Bytes()))
 	var qb bytes.Buffer
@@ -330,6 +364,7 @@ package main
 import (
 	"github.com/segator/jbinary/loader"
 	"os"
+    "syscall"
 )
 
 func main() {
@@ -339,10 +374,13 @@ func main() {
 	forceConsoleBehaviourArgs:=[]string{%s}
 	javaAppArguments :=append(staticJavaAppArguments,os.Args[1:]...)
     debugPort := %d
-	data := "`,jvmArgumentsString,javaArgumentsString,*flagWinExecutionBehaviour,forceConsoleBehaviourArgsString,*flagDebugPort)
+	var function=func(show bool)  {
+		%s
+	}
+	data := "`,jvmArgumentsString,javaArgumentsString,*flagWinExecutionBehaviour,forceConsoleBehaviourArgsString,*flagDebugPort,windowsFunction)
 	FprintZipData(&qb, buffer.Bytes())
 	fmt.Fprint(&qb, `"
-	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,&data)
+	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,&data,function)
 }
 `)
 	if err = ioutil.WriteFile(f.Name(), qb.Bytes(), 0644); err != nil {
