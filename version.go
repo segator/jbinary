@@ -1,4 +1,4 @@
 package main
 
 // Describe version.
-const Version string = "0.0.5-ALPHA4"
+const Version string = "0.0.5-ALPHA5"

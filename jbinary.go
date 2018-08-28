@@ -113,15 +113,17 @@ func main() {
 			exitWithError(err,5)
 		}
 		goGetDependencies([]string{"github.com/josephspurrier/goversioninfo/cmd/goversioninfo"})
-		goget:=exec.Command("goversioninfo","-manifest",manifestInfoFilePath,"-description",*flagWinDescription,"-copyright",*flagWinCopyright,"-company",*flagWinCompany,"-icon",*flagWinIconPath,
+		goversionInfo:=exec.Command("goversioninfo","-manifest",manifestInfoFilePath,"-description",*flagWinDescription,"-copyright",*flagWinCopyright,"-company",*flagWinCompany,"-icon",*flagWinIconPath,
 			"-product-name",*flagWinProductName,"-product-version",*flagWinProductVersion,"-ver-major",*flagWinMajorVersion,"-ver-minor",*flagWinMinorVersion,"-ver-patch",*flagWinPatchVersion,
 			"-trademark",*flagWinCompany)
-		goget.Env=os.Environ()
-		goget.Dir=destDir
-		goget.Stdout = os.Stdout
-		goget.Stderr = os.Stderr
-		goget.Start()
-		goget.Wait()
+		goversionInfo.Env=os.Environ()
+		goversionInfo.Dir=destDir
+		goversionInfo.Stdout = os.Stdout
+		goversionInfo.Stderr = os.Stderr
+		goversionInfo.Start()
+		if err := goversionInfo.Wait(); err != nil {
+			exitWithError(err,6)
+		}
 		extension="exe"
 	}
 
@@ -181,6 +183,9 @@ func goGetDependencies(dependencies []string) {
 		goget.Stderr = os.Stderr
 		goget.Start()
 		goget.Wait()
+		if err := goget.Wait(); err != nil {
+			exitWithError(err,7)
+		}
 	}
 }
 /*
