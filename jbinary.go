@@ -337,7 +337,9 @@ func generateSource(jvmArguments string,appArguments string,srcPath string) (fil
 	javaArgumentsString := generateCodeStringArray(appArguments)
 	forceConsoleBehaviourArgsString := generateCodeStringArray(*flagWinExecutionBehaviourConsoleArgs)
 	windowsFunction :=""
+	windowsImports:=""
 	if(*flagPlatform == "windows") {
+		windowsImports=`"syscall"`
 		windowsFunction =`	
 		var getWin = syscall.NewLazyDLL("kernel32.dll").NewProc("GetConsoleWindow")
 		var showWin = syscall.NewLazyDLL("user32.dll").NewProc("ShowWindow")
@@ -364,7 +366,7 @@ package main
 import (
 	"github.com/segator/jbinary/loader"
 	"os"
-    "syscall"
+    %s
 )
 
 func main() {
@@ -377,7 +379,7 @@ func main() {
 	var function=func(show bool)  {
 		%s
 	}
-	data := "`,jvmArgumentsString,javaArgumentsString,*flagWinExecutionBehaviour,forceConsoleBehaviourArgsString,*flagDebugPort,windowsFunction)
+	data := "`,windowsImports,jvmArgumentsString,javaArgumentsString,*flagWinExecutionBehaviour,forceConsoleBehaviourArgsString,*flagDebugPort,windowsFunction)
 	FprintZipData(&qb, buffer.Bytes())
 	fmt.Fprint(&qb, `"
 	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,&data,function)
