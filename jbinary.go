@@ -182,7 +182,6 @@ func goGetDependencies(dependencies []string) {
 		goget.Stdout = os.Stdout
 		goget.Stderr = os.Stderr
 		goget.Start()
-		goget.Wait()
 		if err := goget.Wait(); err != nil {
 			exitWithError(err,7)
 		}
