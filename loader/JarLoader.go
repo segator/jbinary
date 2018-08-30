@@ -75,6 +75,7 @@ func ExecuteJavaApplication(defaultExecutionBehaviour string,forceConsoleBehavio
 	commandParameters:=append(jvmArguments,applicationArguments...)
 	cmd := exec.Command(javaBin,commandParameters...)
 	cmd.Dir=dir
+	cmd.Env=os.Environ()
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
