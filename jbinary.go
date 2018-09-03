@@ -190,7 +190,7 @@ func goGetDependencies(dependencies []string) {
 /*
 func test(zip string) {
 	jvmArguments:=[]string{}
-	staticJavaAppArguments:=[]string{}
+	staticJavaAppArguments:=[]string{"--debug"}
 	javaAppArguments :=staticJavaAppArguments
 	debugPort := 21500
 	defaultExecutionBehaviour:="gui"
@@ -212,7 +212,6 @@ func test(zip string) {
 	}
 	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,&zip,function)
 }*/
-
 // rename tries to os.Rename, but fall backs to copying from src
 // to dest and unlink the source if os.Rename fails.
 func rename(src, dest string) error {

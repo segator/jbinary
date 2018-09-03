@@ -8,7 +8,9 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -65,11 +67,43 @@ func ExecuteJavaApplication(defaultExecutionBehaviour string,forceConsoleBehavio
 	data=nil
 	runtime.GC()
 	dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
-
-	if Contains(arguments,"-debug") {
-		jvmArguments = append(jvmArguments,fmt.Sprintf("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=%d",debugPort))
-	}
 	var javaBin = path.Join(tempWorkFolder, fmt.Sprintf("java/bin/%s",javaExecutableName))
+	//Capture Java Version
+	cmdVersion:=exec.Command(javaBin,"-version")
+	binaryOutputCmdVersion,err :=cmdVersion.CombinedOutput()
+	stringOutputVersion:=string(binaryOutputCmdVersion)
+	var versionCheckerPattern = regexp.MustCompile(`[a-z]+ version \"(?P<majorVersion>\d+)\.(?P<minorVersion>\d+)\.(?P<patchVersion>\d+).*\"`)
+	matching :=versionCheckerPattern.FindStringSubmatch(stringOutputVersion)
+	matchingGroups:=versionCheckerPattern.SubexpNames()
+	md := map[string]string{}
+	for i, n := range matching {
+		md[matchingGroups[i]] = n
+	}
+	javaMajorVersion,err:=strconv.Atoi(md["majorVersion"])
+	javaMinorVersion,err:=strconv.Atoi(md["minorVersion"])
+	if err != nil {
+		//Not possible to capture java version
+		os.Exit(1500)
+	}
+	if Contains(arguments,"--debug") {
+		debugCommand:=""
+		//From java 1 to java8 Version is distingued by minor
+		if javaMajorVersion == 1 {
+			if javaMinorVersion <= 3 {
+				debugCommand = "-Xnoagent -Djava.compiler=NONE -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=%d"
+			} else if javaMinorVersion <= 4 {
+				debugCommand = "-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=%d"
+			} else if javaMinorVersion <= 8 {
+				debugCommand = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=%d"
+			}
+		} else {
+			if javaMajorVersion >= 9 {
+				debugCommand = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:%d"
+			}
+		}
+		jvmArguments = append(jvmArguments,fmt.Sprintf(debugCommand,debugPort))
+	}
+
 	var jarFile = path.Join(tempWorkFolder, "application.jar")
 	applicationArguments:=append([]string{"-jar", jarFile},arguments...)
 	commandParameters:=append(jvmArguments,applicationArguments...)
