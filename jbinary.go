@@ -177,7 +177,7 @@ func generateManifestFile(srcPath string) (file *os.File, err error) {
 
 func goGetDependencies(dependencies []string) {
 	for _, dependency := range dependencies {
-		goget:=exec.Command("go","get",dependency)
+		goget:=exec.Command("go","get", "-u",dependency)
 		goget.Env=os.Environ()
 		goget.Stdout = os.Stdout
 		goget.Stderr = os.Stderr
