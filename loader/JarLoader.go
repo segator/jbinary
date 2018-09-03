@@ -30,7 +30,7 @@ func ExecuteJavaApplication(defaultExecutionBehaviour string,forceConsoleBehavio
 		if defaultExecutionBehaviour == "gui" {
 			forcedToConsole:=false
 			for _, consoleForceArg := range forceConsoleBehaviourArgs {
-				if Contains(arguments,consoleForceArg) {
+				if Contains(arguments,consoleForceArg) || Contains(arguments,"--debug"){
 					forcedToConsole=true
 				}
 			}
@@ -67,7 +67,8 @@ func ExecuteJavaApplication(defaultExecutionBehaviour string,forceConsoleBehavio
 	data=nil
 	runtime.GC()
 	dir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
-	var javaBin = path.Join(tempWorkFolder, fmt.Sprintf("java/bin/%s",javaExecutableName))
+	var javaHome = path.Join(tempWorkFolder, "java")
+	var javaBin = path.Join(javaHome, fmt.Sprintf("bin/%s",javaExecutableName))
 	//Capture Java Version
 	cmdVersion:=exec.Command(javaBin,"-version")
 	binaryOutputCmdVersion,err :=cmdVersion.CombinedOutput()
@@ -109,7 +110,7 @@ func ExecuteJavaApplication(defaultExecutionBehaviour string,forceConsoleBehavio
 	commandParameters:=append(jvmArguments,applicationArguments...)
 	cmd := exec.Command(javaBin,commandParameters...)
 	cmd.Dir=dir
-	cmd.Env=os.Environ()
+	cmd.Env=append(os.Environ(),"JAVA_HOME="+javaHome)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
