@@ -38,7 +38,6 @@ jobs:
         if: ${{ ! steps.release.outputs.release_created }}
         with:
           distribution: goreleaser
-          # 'latest', 'nightly', or a semver
           version: '~> v2'
           args: release --snapshot --clean
         env:
@@ -49,11 +48,11 @@ jobs:
         if: ${{ steps.release.outputs.release_created }}
         with:
           distribution: goreleaser
-          # 'latest', 'nightly', or a semver
           version: '~> v2'
-          args: release --clean
+          args: release --clean --skip-validate
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ steps.release.outputs.version }}
       - name: Upload Github release assets
         if: ${{ steps.release.outputs.release_created }}
         env:
