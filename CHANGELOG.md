@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.8](https://github.com/segator/jbinary/compare/v0.0.7...v0.0.8) (2025-06-10)
+
+
+### 🔧 Miscellaneous Chores
+
+* fix release ([475b645](https://github.com/segator/jbinary/commit/475b64549d7784fc81200f1a26dd1250050f0946))
+* removed goreleaser ([c169ca8](https://github.com/segator/jbinary/commit/c169ca8d13b1b39b42938a6c4e071e74a8983be8))
+
 ## [0.0.7](https://github.com/segator/jbinary/compare/0.0.6...v0.0.7) (2025-06-10)
 
 
