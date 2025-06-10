@@ -113,7 +113,7 @@ func main() {
 		if err != nil {
 			exitWithError(err,5)
 		}
-		goGetDependencies([]string{"github.com/josephspurrier/goversioninfo/cmd/goversioninfo"})
+		goGetDependencies([]string{"github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.4.0"})
 		goversionInfo:=exec.Command("goversioninfo","-manifest",manifestInfoFilePath,"-description",*flagWinDescription,"-copyright",*flagWinCopyright,"-company",*flagWinCompany,"-icon",*flagWinIconPath,
 			"-product-name",*flagWinProductName,"-product-version",*flagWinProductVersion,"-ver-major",*flagWinMajorVersion,"-ver-minor",*flagWinMinorVersion,"-ver-patch",*flagWinPatchVersion,
 			"-trademark",*flagWinCompany)
