@@ -1,0 +1,23 @@
+version: 2
+project_name: jbinary
+builds:
+  -
+    goos:
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    no_unique_dist_dir: true
+    binary: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+
+checksum:
+  # This is the crucial addition. It tells GoReleaser to generate
+  # a checksum file for each artifact individually.
+  split: true
+
+  # Now that `split` is true, this template will be run for each binary,
+  # and {{ .ArtifactName }} will be correctly populated.
+  name_template: '{{ .ArtifactName }}.sha256'
+
+  algorithm: sha256

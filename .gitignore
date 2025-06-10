@@ -1,2 +1,4 @@
 .idea/
 jbinary.exe
+# Added by goreleaser init:
+dist/

@@ -8,7 +8,6 @@ import (
 	"compress/gzip"
 	"flag"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"log"
@@ -21,49 +20,49 @@ import (
 	"syscall"
 	"text/template"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 const (
-	nameSourceFile = "data.go"
+	nameSourceFile      = "data.go"
 	nameVersionInfoFile = "versioninfo.json"
-	nameManifestFile = "manifest.xml"
+	nameManifestFile    = "manifest.xml"
 )
 
 var namePackage string
 
 var (
 	flagJavaAppPath        = flag.String("jar", path.Join(".", "application.jar"), "Path of the java application")
-	flagDest       = flag.String("build", ".", "The destination path of the generated package.")
-	flagPlatform   = flag.String("platform", "windows", "Operating system(linux|windows)")
-	flagArchitecture   = flag.String("architecture", "amd64", "Building Architecture (amd64|386)")
-	flagJreVersio = flag.String("jre-version", "1.8.0_131", "The destination path of the generated package.")
-	flagJavaType = flag.String("java-type", "jre", "Java type jre|jdk")
-	flagNoMtime    = flag.Bool("ignore-modtime", false, "Ignore modification times on files.")
-	flagNoCompress = flag.Bool("no-compress", false, "Do not use compression to shrink the files.")
-	flagJVMArguments = flag.String("jvm-arguments", "", "JVM Arguments")
-	flagAppArguments = flag.String("app-arguments", "", "App Arguments")
-	flagPkg        = flag.String("output-name", "application", "Name of the generated package")
-	flagDebugPort = flag.Int64("jre-debug-port", 21500, "Debug port to listen if the generated binary is executed with cli -debug")
-	flagServerURL  = flag.String("java-server-url","https://artifacts.alfresco.com/nexus/content/repositories/public","Server base URL to look for java download")
-	flagDefaultDownloadURL="{serverURL}/com/oracle/java/{javaType}/{javaVersion}/{javaType}-{javaVersion}-{platform}{architecture}.tgz"
-	jreDownloadURL = flag.String("java-download-link",flagDefaultDownloadURL,"Link where to download java distribution format:"+flagDefaultDownloadURL)
+	flagDest               = flag.String("build", ".", "The destination path of the generated package.")
+	flagPlatform           = flag.String("platform", "windows", "Operating system(linux|windows)")
+	flagArchitecture       = flag.String("architecture", "amd64", "Building Architecture (amd64|386)")
+	flagJreVersio          = flag.String("jre-version", "1.8.0_131", "The destination path of the generated package.")
+	flagJavaType           = flag.String("java-type", "jre", "Java type jre|jdk")
+	flagNoMtime            = flag.Bool("ignore-modtime", false, "Ignore modification times on files.")
+	flagNoCompress         = flag.Bool("no-compress", false, "Do not use compression to shrink the files.")
+	flagJVMArguments       = flag.String("jvm-arguments", "", "JVM Arguments")
+	flagAppArguments       = flag.String("app-arguments", "", "App Arguments")
+	flagPkg                = flag.String("output-name", "application", "Name of the generated package")
+	flagDebugPort          = flag.Int64("jre-debug-port", 21500, "Debug port to listen if the generated binary is executed with cli -debug")
+	flagServerURL          = flag.String("java-server-url", "https://artifacts.alfresco.com/nexus/content/repositories/public", "Server base URL to look for java download")
+	flagDefaultDownloadURL = "{serverURL}/com/oracle/java/{javaType}/{javaVersion}/{javaType}-{javaVersion}-{platform}{architecture}.tgz"
+	jreDownloadURL         = flag.String("java-download-link", flagDefaultDownloadURL, "Link where to download java distribution format:"+flagDefaultDownloadURL)
 	//https://artifacts.alfresco.com/nexus/content/repositories/public/com/oracle/java/jre/1.8.0_131/jre-1.8.0_131-win64.tgz
 
-	flagWinDescription  = flag.String("win-description", "no description", "Windows Application description")
-	flagWinCopyright  = flag.String("win-copyright", "no copyright", "Windows Application copyright")
-	flagWinCompany  = flag.String("win-company", "no company", "Windows Application company name")
-	flagWinIconPath  = flag.String("win-icon-path", "", "icon path")
-	flagWinProductName  = flag.String("win-product-name", "product name", "Windows Application product name")
-	flagWinProductVersion  = flag.String("win-product-version", "1.0.0.0", "Windows Application product version")
-	flagWinMajorVersion  = flag.String("win-version-major", "1", "Windows Application Major version")
-	flagWinMinorVersion = flag.String("win-version-minor", "0", "Windows Application Minor version")
-	flagWinPatchVersion = flag.String("win-version-patch", "0", "Windows Application Patch version")
-	flagWinBuildVersion = flag.String("win-version-build", "0", "Windows Application Build version")
-	flagWinExecutionLevel = flag.String("win-invoker", "asInvoker", "Windows Invoker type  asInvoker|requireAdministrator default(asInvoker)")
-	flagWinExecutionBehaviour = flag.String("win-execution-behaviour", "console", "Default behaviour to run app, in gui mode no console is shown but you can't execute by console or capture stdout, (console|gui) default(console)")
+	flagWinDescription                   = flag.String("win-description", "no description", "Windows Application description")
+	flagWinCopyright                     = flag.String("win-copyright", "no copyright", "Windows Application copyright")
+	flagWinCompany                       = flag.String("win-company", "no company", "Windows Application company name")
+	flagWinIconPath                      = flag.String("win-icon-path", "", "icon path")
+	flagWinProductName                   = flag.String("win-product-name", "product name", "Windows Application product name")
+	flagWinProductVersion                = flag.String("win-product-version", "1.0.0.0", "Windows Application product version")
+	flagWinMajorVersion                  = flag.String("win-version-major", "1", "Windows Application Major version")
+	flagWinMinorVersion                  = flag.String("win-version-minor", "0", "Windows Application Minor version")
+	flagWinPatchVersion                  = flag.String("win-version-patch", "0", "Windows Application Patch version")
+	flagWinBuildVersion                  = flag.String("win-version-build", "0", "Windows Application Build version")
+	flagWinExecutionLevel                = flag.String("win-invoker", "asInvoker", "Windows Invoker type  asInvoker|requireAdministrator default(asInvoker)")
+	flagWinExecutionBehaviour            = flag.String("win-execution-behaviour", "console", "Default behaviour to run app, in gui mode no console is shown but you can't execute by console or capture stdout, (console|gui) default(console)")
 	flagWinExecutionBehaviourConsoleArgs = flag.String("win-execution-enable-console-behaviour-args", "-console;-terminal", "Arguments that will force console mode in case of default behaviour gui, default (-console;-terminal)")
-
-
 )
 
 // mtimeDate holds the arbitrary mtime that we assign to files when
@@ -72,67 +71,67 @@ var mtimeDate = time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
 func main() {
 	flag.Parse()
-	javaAppPathAbs,_:=filepath.Abs(*flagJavaAppPath)
+	javaAppPathAbs, _ := filepath.Abs(*flagJavaAppPath)
 	namePackage = *flagPkg
 	//Create work dir
-	tempWorkFolder, _ :=ioutil.TempDir("", "jbinary")
-	fmt.Printf("Created Working folder %s\n",tempWorkFolder)
+	tempWorkFolder, _ := ioutil.TempDir("", "jbinary")
+	fmt.Printf("Created Working folder %s\n", tempWorkFolder)
 	os.MkdirAll(tempWorkFolder, 0755)
 	downloadJRE(tempWorkFolder)
-	fmt.Printf("Java application:%s\n",javaAppPathAbs)
-	Copy(javaAppPathAbs,filepath.Join(tempWorkFolder,"application.jar"))
+	fmt.Printf("Java application:%s\n", javaAppPathAbs)
+	Copy(javaAppPathAbs, filepath.Join(tempWorkFolder, "application.jar"))
 
 	fmt.Println("Generating golang source class")
-	file, err := generateSource(*flagJVMArguments,*flagAppArguments,tempWorkFolder)
+	file, err := generateSource(*flagJVMArguments, *flagAppArguments, tempWorkFolder)
 	if err != nil {
-		exitWithError(err,1)
+		exitWithError(err, 1)
 	}
 
 	destDir := *flagDest
 	err = os.MkdirAll(destDir, 0755)
 	if err != nil {
-		exitWithError(err,2)
+		exitWithError(err, 2)
 	}
-	sourceFile :=path.Join(destDir, nameSourceFile)
-	err = rename(file.Name(),sourceFile)
+	sourceFile := path.Join(destDir, nameSourceFile)
+	err = rename(file.Name(), sourceFile)
 	if err != nil {
-		exitWithError(err,3)
+		exitWithError(err, 3)
 	}
-	sourceVersionInfoFilePath :=path.Join(destDir, nameVersionInfoFile)
-	manifestInfoFilePath :=path.Join(destDir, nameManifestFile)
+	sourceVersionInfoFilePath := path.Join(destDir, nameVersionInfoFile)
+	manifestInfoFilePath := path.Join(destDir, nameManifestFile)
 	goGetDependencies([]string{"github.com/segator/jbinary"})
 	extension := "bin"
-	if strings.Compare(*flagPlatform,"windows")==0 {
+	if strings.Compare(*flagPlatform, "windows") == 0 {
 		fmt.Println("Go Generate version info")
-		_,err =generateVersionInfoFile(sourceVersionInfoFilePath)
+		_, err = generateVersionInfoFile(sourceVersionInfoFilePath)
 		if err != nil {
-			exitWithError(err,5)
+			exitWithError(err, 5)
 		}
 		fmt.Println("Go Generate windows manifest file")
-		_,err =generateManifestFile(manifestInfoFilePath)
+		_, err = generateManifestFile(manifestInfoFilePath)
 		if err != nil {
-			exitWithError(err,5)
+			exitWithError(err, 5)
 		}
 		goGetDependencies([]string{"github.com/josephspurrier/goversioninfo/cmd/goversioninfo@v1.4.0"})
-		goversionInfo:=exec.Command("goversioninfo","-manifest",manifestInfoFilePath,"-description",*flagWinDescription,"-copyright",*flagWinCopyright,"-company",*flagWinCompany,"-icon",*flagWinIconPath,
-			"-product-name",*flagWinProductName,"-product-version",*flagWinProductVersion,"-ver-major",*flagWinMajorVersion,"-ver-minor",*flagWinMinorVersion,"-ver-patch",*flagWinPatchVersion,
-			"-trademark",*flagWinCompany)
-		goversionInfo.Env=os.Environ()
-		goversionInfo.Dir=destDir
+		goversionInfo := exec.Command("goversioninfo", "-manifest", manifestInfoFilePath, "-description", *flagWinDescription, "-copyright", *flagWinCopyright, "-company", *flagWinCompany, "-icon", *flagWinIconPath,
+			"-product-name", *flagWinProductName, "-product-version", *flagWinProductVersion, "-ver-major", *flagWinMajorVersion, "-ver-minor", *flagWinMinorVersion, "-ver-patch", *flagWinPatchVersion,
+			"-trademark", *flagWinCompany)
+		goversionInfo.Env = os.Environ()
+		goversionInfo.Dir = destDir
 		goversionInfo.Stdout = os.Stdout
 		goversionInfo.Stderr = os.Stderr
 		goversionInfo.Start()
 		if err := goversionInfo.Wait(); err != nil {
-			exitWithError(err,6)
+			exitWithError(err, 6)
 		}
-		extension="exe"
+		extension = "exe"
 	}
 
-	fmt.Printf("Building Jre embeded application OS:%s  ARCH:%s  FILENAME:%s\n",*flagPlatform,*flagArchitecture,filepath.Join(destDir,namePackage+"."+extension))
+	fmt.Printf("Building Jre embeded application OS:%s  ARCH:%s  FILENAME:%s\n", *flagPlatform, *flagArchitecture, filepath.Join(destDir, namePackage+"."+extension))
 	//"-ldflags","-H=windowsgui",
-	cmd := exec.Command("go","build","-o",namePackage+"."+extension)
-	cmd.Env=append(os.Environ(),"GOOS="+*flagPlatform,"GOARCH="+*flagArchitecture)
-	cmd.Dir=destDir
+	cmd := exec.Command("go", "build", "-o", namePackage+"."+extension)
+	cmd.Env = append(os.Environ(), "GOOS="+*flagPlatform, "GOARCH="+*flagArchitecture)
+	cmd.Dir = destDir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Start()
@@ -142,7 +141,7 @@ func main() {
 		ws := exitError.Sys().(syscall.WaitStatus)
 		exitCode = ws.ExitStatus()
 	}
-	fmt.Printf("deleting Working Folder:%s\n",tempWorkFolder)
+	fmt.Printf("deleting Working Folder:%s\n", tempWorkFolder)
 	os.Remove(sourceFile)
 	os.Remove(path.Join(destDir, "resource.syso"))
 	os.Remove(sourceVersionInfoFilePath)
@@ -171,22 +170,23 @@ func generateManifestFile(srcPath string) (file *os.File, err error) {
        </requestedPrivileges>
    </security>
  </trustInfo>
-</assembly>`,*flagWinProductName,*flagWinMajorVersion,*flagWinMinorVersion,*flagWinPatchVersion,*flagWinBuildVersion,*flagWinExecutionLevel)
-	return f,err
+</assembly>`, *flagWinProductName, *flagWinMajorVersion, *flagWinMinorVersion, *flagWinPatchVersion, *flagWinBuildVersion, *flagWinExecutionLevel)
+	return f, err
 }
 
 func goGetDependencies(dependencies []string) {
 	for _, dependency := range dependencies {
-		goget:=exec.Command("go","get", "-u",dependency)
-		goget.Env=os.Environ()
+		goget := exec.Command("go", "get", "-u", dependency)
+		goget.Env = os.Environ()
 		goget.Stdout = os.Stdout
 		goget.Stderr = os.Stderr
 		goget.Start()
 		if err := goget.Wait(); err != nil {
-			exitWithError(err,7)
+			exitWithError(err, 7)
 		}
 	}
 }
+
 /*
 func test(zip string) {
 	jvmArguments:=[]string{}
@@ -271,11 +271,10 @@ func generateVersionInfoFile(srcPath string) (file *os.File, err error) {
     }
   }
 }`)
-	return f,err
+	return f, err
 }
 
-
-func generateSource(jvmArguments string,appArguments string,srcPath string) (file *os.File, err error) {
+func generateSource(jvmArguments string, appArguments string, srcPath string) (file *os.File, err error) {
 	var (
 		buffer    bytes.Buffer
 		zipWriter io.Writer
@@ -339,11 +338,11 @@ func generateSource(jvmArguments string,appArguments string,srcPath string) (fil
 	jvmArgumentsString := generateCodeStringArray(jvmArguments)
 	javaArgumentsString := generateCodeStringArray(appArguments)
 	forceConsoleBehaviourArgsString := generateCodeStringArray(*flagWinExecutionBehaviourConsoleArgs)
-	windowsFunction :=""
-	windowsImports:=""
-	if(*flagPlatform == "windows") {
-		windowsImports=`"syscall"`
-		windowsFunction =`	
+	windowsFunction := ""
+	windowsImports := ""
+	if *flagPlatform == "windows" {
+		windowsImports = `"syscall"`
+		windowsFunction = `	
 		var getWin = syscall.NewLazyDLL("kernel32.dll").NewProc("GetConsoleWindow")
 		var showWin = syscall.NewLazyDLL("user32.dll").NewProc("ShowWindow")
 		hwnd, _, _ := getWin.Call()
@@ -382,7 +381,7 @@ func main() {
 	var function=func(show bool)  {
 		%s
 	}
-	data := "`,windowsImports,jvmArgumentsString,javaArgumentsString,*flagWinExecutionBehaviour,forceConsoleBehaviourArgsString,*flagDebugPort,windowsFunction)
+	data := "`, windowsImports, jvmArgumentsString, javaArgumentsString, *flagWinExecutionBehaviour, forceConsoleBehaviourArgsString, *flagDebugPort, windowsFunction)
 	FprintZipData(&qb, buffer.Bytes())
 	fmt.Fprint(&qb, `"
 	loader.ExecuteJavaApplication(defaultExecutionBehaviour,forceConsoleBehaviourArgs,jvmArguments,javaAppArguments,debugPort,&data,function)
@@ -394,17 +393,16 @@ func main() {
 	return f, nil
 }
 
-
 func generateCodeStringArray(parameters string) string {
 	parameters = strings.TrimSpace(parameters)
 	if parameters != "" {
-		parametersSlice := strings.Split(parameters,";")
+		parametersSlice := strings.Split(parameters, ";")
 		var templStr = `{{range $i, $e := $}}{{if $i}},{{end}}"{{$e}}"{{end}}`
 		var tpl bytes.Buffer
 		t := template.Must(template.New("splitParameters").Parse(templStr))
 		t.Execute(&tpl, parametersSlice)
 		return tpl.String()
-	}else {
+	} else {
 		return ""
 	}
 
@@ -434,39 +432,38 @@ func FprintZipData(dest *bytes.Buffer, zipData []byte) {
 }
 
 // Prints out the error message and exists with a non-success signal.
-func exitWithError(err error,exitCode int) {
+func exitWithError(err error, exitCode int) {
 
 	fmt.Println(err)
 	os.Exit(exitCode)
 }
 
-func downloadJRE(workDir string){
-	var jreTarPath = filepath.Join(workDir,"jre.tar.gz")
-	var ossystem="linux"
-	var arch="32"
+func downloadJRE(workDir string) {
+	var jreTarPath = filepath.Join(workDir, "jre.tar.gz")
+	var ossystem = "linux"
+	var arch = "32"
 	if *flagArchitecture == "amd64" {
-		arch="64"
+		arch = "64"
 	}
 	if *flagPlatform == "windows" {
-		ossystem="win"
-	}else{
-		arch=""
+		ossystem = "win"
+	} else {
+		arch = ""
 	}
-	var jreURL =strings.Replace(*jreDownloadURL,"{javaType}",*flagJavaType,-1)
-	jreURL=strings.Replace(jreURL,"{javaVersion}",*flagJreVersio,-1)
-	jreURL=strings.Replace(jreURL,"{serverURL}",*flagServerURL,-1)
-	jreURL=strings.Replace(jreURL,"{platform}",ossystem,-1)
-	jreURL=strings.Replace(jreURL,"{architecture}",arch,-1)
-	DownloadFile(jreTarPath,jreURL)
-	fmt.Printf("Extracting JRE version:%s  architecture:%s\n",ossystem,arch)
-	ExtractTarGz(jreTarPath,workDir)
+	var jreURL = strings.Replace(*jreDownloadURL, "{javaType}", *flagJavaType, -1)
+	jreURL = strings.Replace(jreURL, "{javaVersion}", *flagJreVersio, -1)
+	jreURL = strings.Replace(jreURL, "{serverURL}", *flagServerURL, -1)
+	jreURL = strings.Replace(jreURL, "{platform}", ossystem, -1)
+	jreURL = strings.Replace(jreURL, "{architecture}", arch, -1)
+	DownloadFile(jreTarPath, jreURL)
+	fmt.Printf("Extracting JRE version:%s  architecture:%s\n", ossystem, arch)
+	ExtractTarGz(jreTarPath, workDir)
 	os.Remove(jreTarPath)
-
 
 }
 
 func DownloadFile(filepath string, url string) error {
-	fmt.Printf("Downloading %s\n",url)
+	fmt.Printf("Downloading %s\n", url)
 	// Create the file
 	out, err := os.Create(filepath)
 	if err != nil {
@@ -477,7 +474,7 @@ func DownloadFile(filepath string, url string) error {
 	// Get the data
 	resp, err := http.Get(url)
 	if resp.StatusCode == 404 || resp.StatusCode == 409 {
-		exitWithError(errors.New(strings.Replace("URL Repository JRE not found: {url}","{url}",url,-1)),4)
+		exitWithError(errors.New(strings.Replace("URL Repository JRE not found: {url}", "{url}", url, -1)), 4)
 	}
 	if err != nil {
 		return err
@@ -492,9 +489,9 @@ func DownloadFile(filepath string, url string) error {
 
 	return nil
 }
-func ExtractTarGz(srcTarGzPath string,destination string) {
+func ExtractTarGz(srcTarGzPath string, destination string) {
 	file, err := os.Open(srcTarGzPath)
-	gzipStream :=bufio.NewReader(file)
+	gzipStream := bufio.NewReader(file)
 	uncompressedStream, err := gzip.NewReader(gzipStream)
 	if err != nil {
 		log.Fatal("ExtractTarGz: NewReader failed")
@@ -515,11 +512,11 @@ func ExtractTarGz(srcTarGzPath string,destination string) {
 
 		switch header.Typeflag {
 		case tar.TypeDir:
-			if err := os.Mkdir(filepath.Join(destination,header.Name), 0755); err != nil {
+			if err := os.Mkdir(filepath.Join(destination, header.Name), 0755); err != nil {
 				log.Fatalf("ExtractTarGz: Mkdir() failed: %s", err.Error())
 			}
 		case tar.TypeReg:
-			outFile, err := os.Create(filepath.Join(destination,header.Name))
+			outFile, err := os.Create(filepath.Join(destination, header.Name))
 			if err != nil {
 				log.Fatalf("ExtractTarGz: Create() failed: %s", err.Error())
 			}
@@ -527,8 +524,8 @@ func ExtractTarGz(srcTarGzPath string,destination string) {
 			if _, err := io.Copy(outFile, tarReader); err != nil {
 				log.Fatalf("ExtractTarGz: Copy() failed: %s", err.Error())
 			}
-		case tar.TypeLink,tar.TypeSymlink,tar.TypeChar,tar.TypeBlock,tar.TypeFifo:
-			log.Printf("Ignoring tar object:%s file:%s",string(header.Typeflag),header.Name)
+		case tar.TypeLink, tar.TypeSymlink, tar.TypeChar, tar.TypeBlock, tar.TypeFifo:
+			log.Printf("Ignoring tar object:%s file:%s", string(header.Typeflag), header.Name)
 		default:
 			log.Fatalf(
 				"ExtractTarGz: uknown type: %s in %s",
