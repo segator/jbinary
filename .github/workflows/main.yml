@@ -25,16 +25,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23.10'
-      -
-        name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        with:
-          distribution: goreleaser
-          # 'latest', 'nightly', or a semver
-          version: '~> v2'
-          args: release --clean
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Release
         id: release
         uses: googleapis/release-please-action@v4.2.0
@@ -42,6 +32,28 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: .github/release-please/config.json
           manifest-file: .github/release-please/manifest.json
+      -
+        name: GoReleaser snapshot
+        uses: goreleaser/goreleaser-action@v6
+        if: ${{ ! steps.release.outputs.release_created }}
+        with:
+          distribution: goreleaser
+          # 'latest', 'nightly', or a semver
+          version: '~> v2'
+          args: release --snapshot --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          distribution: goreleaser
+          # 'latest', 'nightly', or a semver
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload Github release assets
         if: ${{ steps.release.outputs.release_created }}
         env:
