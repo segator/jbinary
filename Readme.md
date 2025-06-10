@@ -61,14 +61,14 @@ A single windows linux binary is shiped out of the box.
 ## Install
 ### Linux
 ```
-wget https://github.com/segator/jbinary/releases/download/0.0.6/jbinary_0.0.6_linux_amd64 -O /usr/bin/JBinary && chmod 777 /usr/bin/JBinary # x-release-please-version
+wget https://github.com/segator/jbinary/releases/download/0.0.7/jbinary_0.0.6_linux_amd64 -O /usr/bin/JBinary && chmod 777 /usr/bin/JBinary # x-release-please-version
 ```
 
 ### Windows
 Execute as admin
 ```
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-Invoke-WebRequest -Uri "https://github.com/segator/jbinary/releases/download/0.0.6/jbinary_0.0.6-windows_amd64.exe" -OutFile "C:\Windows\System32\JBinary.exe" # x-release-please-version
+Invoke-WebRequest -Uri "https://github.com/segator/jbinary/releases/download/0.0.7/jbinary_0.0.6-windows_amd64.exe" -OutFile "C:\Windows\System32\JBinary.exe" # x-release-please-version
 ```
 ## Example
 ```bash
