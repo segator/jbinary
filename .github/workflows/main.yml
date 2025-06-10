@@ -33,26 +33,10 @@ jobs:
           config-file: .github/release-please/config.json
           manifest-file: .github/release-please/manifest.json
       -
-        name: GoReleaser snapshot
-        uses: goreleaser/goreleaser-action@v6
-        if: ${{ ! steps.release.outputs.release_created }}
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --snapshot --clean
+        name: Build
+        run: make build
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      -
-        name: GoReleaser
-        uses: goreleaser/goreleaser-action@v6
-        if: ${{ steps.release.outputs.release_created }}
-        with:
-          distribution: goreleaser
-          version: '~> v2'
-          args: release --clean --skip-validate
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GORELEASER_CURRENT_TAG: ${{ steps.release.outputs.version }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
       - name: Upload Github release assets
         if: ${{ steps.release.outputs.release_created }}
         env:
