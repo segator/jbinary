@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.0.10](https://github.com/segator/jbinary/compare/v0.0.9...v0.0.10) (2025-06-11)
+
+
+### 🤖 Continuous Integration
+
+* external PR support ([3ac21b4](https://github.com/segator/jbinary/commit/3ac21b417f6ea1640a6c5bda893d81aaec4c9fde))
+
 ## [0.0.9](https://github.com/segator/jbinary/compare/v0.0.8...v0.0.9) (2025-06-10)
 
 
