@@ -1,9 +1,6 @@
 name: Build And Push
 
 on:
-  pull_request:
-    branches:
-      - master
   push:
     branches:
       - master
