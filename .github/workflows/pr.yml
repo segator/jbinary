@@ -1,0 +1,28 @@
+name: Build And Push
+
+on:
+  pull_request:
+    branches:
+      - master
+
+
+permissions:
+  contents: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  goreleaser:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.10'     
+      -
+        name: Build
+        run: make build
